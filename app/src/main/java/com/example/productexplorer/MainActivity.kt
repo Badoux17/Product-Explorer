@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.example.productexplorer.ui.theme.ProductExplorerTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.OutlinedTextField
 
 
 class MainActivity : ComponentActivity() {
@@ -85,18 +86,22 @@ fun ProductDetailScreen(
             modifier = Modifier
                 .fillMaxWidth()
         )
-
+        ProductWarrantyField(
+            warrantyInformation = product.warrantyInformation,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp)
+        )
         ProductDescription(
             description = product.description,
             modifier = Modifier.padding(top = 16.dp)
         )
-
-        Text(text = "${product.price} €")
-        Text(text = product.description)
-        Button(onClick = onAddToCartClick) {
-            Text(text = "Ajouter au panier")
-        }
-    }
+        AddToCartButton(
+            onClick = onAddToCartClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp)
+        )
 }
 
 @Preview(showBackground = true)
@@ -224,5 +229,33 @@ fun ProductDescription(
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 4.dp)
         )
+    }
+}
+@Composable
+fun ProductWarrantyField(
+    warrantyInformation: String,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = warrantyInformation,
+        onValueChange = {},
+        readOnly = true,
+        label = {
+            Text(text = "Garantie")
+        },
+        modifier = modifier
+    )
+}
+
+@Composable
+fun AddToCartButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier
+    ) {
+        Text(text = "Ajouter au panier")
     }
 }
