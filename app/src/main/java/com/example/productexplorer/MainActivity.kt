@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
@@ -54,6 +55,16 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+    }
+}
+@Preview(showBackground = true)
+@Composable
+fun ProductCatalogScreenPreview() {
+    ProductExplorerTheme {
+        ProductCatalogScreen(
+            products = sampleProducts(),
+            onProductClick = {}
+        )
     }
 }
 @Composable
@@ -526,6 +537,7 @@ fun ProductCatalogScreen(
                 text = "Catalogue produits",
                 style = MaterialTheme.typography.headlineMedium
             )
+            CategoryRow(categories = sampleCategories())
         }
         items(
             items = products,
@@ -567,5 +579,30 @@ fun ProductListItem(
                 Text(text = "Voir le produit")
             }
         }
+}
+
+fun sampleCategories(): List<String> {
+    return listOf("Smartphones", "Audio", "Wearables", "Maison")
+}
+
+@Composable
+fun CategoryRow(
+    categories: List<String>,
+    modifier: Modifier = Modifier
+) {
+    LazyRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item {
+            Text(
+                text = "Explorez une sélection de produits disponibles localement.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+        items(categories) { category ->
+            CategoryChip(label = category)
+        }
     }
 }
+
