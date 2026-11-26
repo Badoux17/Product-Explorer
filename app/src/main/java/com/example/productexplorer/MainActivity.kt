@@ -37,6 +37,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CardDefaults
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 
 
 class MainActivity : ComponentActivity() {
@@ -558,7 +563,17 @@ fun ProductCatalogScreen(
     products: List<ProductUi>,
     onProductClick: (ProductUi) -> Unit,
     modifier: Modifier = Modifier
-) {
+    ) {
+    var searchQuery by rememberSaveable {
+        mutableStateOf("")
+    }
+    val filteredProducts = remember(products, searchQuery) {
+        products.filter { product ->
+            product.title.contains(searchQuery, ignoreCase = true) ||
+                    product.brand.contains(searchQuery, ignoreCase = true) ||
+                    product.category.contains(searchQuery, ignoreCase = true)
+        }
+    }
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -575,8 +590,20 @@ fun ProductCatalogScreen(
             )
             CategoryRow(categories = sampleCategories())
         }
+        item {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { newValue ->
+                    searchQuery = newValue
+                },
+                label = {
+                    Text(text = "Rechercher un produit")
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
         items(
-            items = products,
+            items = filteredProducts,
             key = { product -> product.id }
         ) { product ->
             ProductListItem(
