@@ -567,13 +567,31 @@ fun ProductCatalogScreen(
     var searchQuery by rememberSaveable {
         mutableStateOf("")
     }
-    val filteredProducts = remember(products, searchQuery) {
+    var showOnlyInStock by rememberSaveable {
+        mutableStateOf(false)
+    }
+    var favoriteProductIds by rememberSaveable {
+        mutableStateOf(listOf<Int>())
+    }
+    val filteredProducts = remember(products, searchQuery, showOnlyInStock) {
         products.filter { product ->
-            product.title.contains(searchQuery, ignoreCase = true) ||
-                    product.brand.contains(searchQuery, ignoreCase = true) ||
-                    product.category.contains(searchQuery, ignoreCase = true)
+            val matchesSearch =
+                product.title.contains(searchQuery, ignoreCase = true) ||
+                        product.brand.contains(searchQuery, ignoreCase = true) ||
+                        product.category.contains(searchQuery, ignoreCase = true)
+            val matchesStock =
+                !showOnlyInStock || product.stock > 0
+            matchesSearch && matchesStock
         }
     }
+    fun toggleFavorite(productId: Int) {
+        favoriteProductIds = if (favoriteProductIds.contains(productId)) {
+            favoriteProductIds - productId
+        } else {
+            favoriteProductIds + productId
+        }
+    }
+
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -602,6 +620,21 @@ fun ProductCatalogScreen(
                 modifier = Modifier.fillMaxWidth()
             )
         }
+        item {
+            Button(
+                onClick = {
+                    showOnlyInStock = !showOnlyInStock
+                }
+            ) {
+                Text(
+                    text = if (showOnlyInStock) {
+                        "Afficher tous les produits"
+                    } else {
+                        "Afficher uniquement les produits en stock"
+                    }
+                )
+            }
+        }
         items(
             items = filteredProducts,
             key = { product -> product.id }
@@ -618,6 +651,8 @@ fun ProductCatalogScreen(
 @Composable
 fun ProductListItem(
     product: ProductUi,
+    isFavorite: Boolean,
+    onFavoriteClick: () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -649,7 +684,16 @@ fun ProductListItem(
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary
         )
-            Spacer(modifier = Modifier.height(8.dp))
+        Button(onClick = onFavoriteClick) {
+            Text(
+                text = if (isFavorite) {
+                    "Retirer des favoris"
+                } else {
+                    "Ajouter aux favoris"
+                }
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
             Button(onClick = onClick) {
                 Text(text = "Voir le produit")
             }
