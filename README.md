@@ -38,4 +38,6 @@ Organisation finale
 
 ProductCatalogViewModel gère l'état, ProductCatalogContainer le relie à Compose, ProductCatalogScreen l'affiche et ProductListItem affiche chaque produit.
 
+<img width="432" height="432" alt="image" src="https://github.com/user-attachments/assets/d274a9b9-754a-4f8c-b5cb-aea395e9c265" />
+
 Piton Léo M1AL
