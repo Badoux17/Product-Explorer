@@ -35,8 +35,10 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CardDefaults
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +46,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 
 class MainActivity : ComponentActivity() {
@@ -123,39 +129,6 @@ fun ProductDetailScreen(
     }
 }
 
-//Preview
-
-@Preview(showBackground = true)
-@Composable
-fun ProductDetailScreenPreview() {
-    ProductExplorerTheme {
-        ProductDetailScreen(
-            product = sampleProduct(),
-            onAddToCartClick = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ProductDetailScreenOutOfStockPreview() {
-    ProductExplorerTheme {
-        ProductDetailScreen(
-            product = sampleProductOutOfStock(),
-            onAddToCartClick = {}
-        )
-    }
-}
-@Preview(showBackground = true)
-@Composable
-fun ProductHomeScreenPreview() {
-    ProductExplorerTheme {
-        ProductHomeScreen(
-            featuredProduct = sampleProduct(),
-            onFeaturedProductClick = {},
-        )
-    }
-}
 
 //Composant
 
@@ -441,27 +414,6 @@ fun ProductQuickInfoRow(
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun ProductCatalogContainerPreview() {
-    @Composable
-    fun ProductCatalogScreenDarkPreview() {
-        ProductExplorerTheme(darkTheme = true) {
-            ProductCatalogScreen(
-                products = sampleProducts(),
-                categories = sampleCategories(),
-                searchQuery = "audio",
-                onSearchQueryChange = {},
-                showOnlyInStock = true,
-                onToggleStockFilter = {},
-                favoriteProductIds = listOf(2),
-                onFavoriteClick = {},
-                onProductClick = {}
-            )
-        }
-    }
-}
-
 @Preview(
     showBackground = true,
     name = "Catalogue - Dark Theme"
@@ -583,6 +535,8 @@ fun DailyOfferBox(
         }
     }
 }
+
+
 @Preview(showBackground = true)
 @Composable
 fun ProductCatalogScreenStatelessPreview() {
@@ -600,6 +554,7 @@ fun ProductCatalogScreenStatelessPreview() {
         )
     }
 }
+
 
 @Composable
 fun ProductCatalogScreen(
@@ -685,19 +640,22 @@ fun ProductCatalogContainer(
     modifier: Modifier = Modifier,
     viewModel: ProductCatalogViewModel = viewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
+
     ProductCatalogScreen(
-        products = viewModel.filteredProducts,
-        categories = viewModel.categories,
-        searchQuery = viewModel.searchQuery,
+        products = uiState.products,
+        categories = uiState.categories,
+        searchQuery = uiState.searchQuery,
         onSearchQueryChange = viewModel::onSearchQueryChange,
-        showOnlyInStock = viewModel.showOnlyInStock,
+        showOnlyInStock = uiState.showOnlyInStock,
         onToggleStockFilter = viewModel::onToggleStockFilter,
-        favoriteProductIds = viewModel.favoriteProductIds,
+        favoriteProductIds = uiState.favoriteProductIds,
         onFavoriteClick = viewModel::onFavoriteClick,
         onProductClick = onProductClick,
         modifier = modifier
     )
 }
+
 @Composable
 fun ProductListItem(
     product: ProductUi,
@@ -774,39 +732,27 @@ fun CategoryRow(
         }
     }
 }
+data class ProductCatalogUiState(
+    val products: List<ProductUi> = emptyList(),
+    val categories: List<String> = emptyList(),
+    val searchQuery: String = "",
+    val showOnlyInStock: Boolean = false,
+    val favoriteProductIds: List<Int> = emptyList()
+)
 
 class ProductCatalogViewModel : ViewModel() {
     private val allProducts: List<ProductUi> = sampleProducts()
-    val categories: List<String> = sampleCategories()
+    private val allCategories: List<String> = sampleCategories()
+    private val _uiState = MutableStateFlow(
+        ProductCatalogUiState(
+            products = allProducts,
+            categories = allCategories
+        )
+    )
+    val uiState: StateFlow<ProductCatalogUiState> = _uiState.asStateFlow()
 
-    var searchQuery by mutableStateOf("")
-        private set
-
-    var showOnlyInStock by mutableStateOf(false)
-        private set
-
-    fun onToggleStockFilter() {
-        showOnlyInStock = !showOnlyInStock
-    }
-
-    var favoriteProductIds by mutableStateOf(listOf<Int>())
-        private set
-
-    fun onFavoriteClick(productId: Int) {
-        favoriteProductIds = if (favoriteProductIds.contains(productId)) {
-            favoriteProductIds - productId
-        } else {
-            favoriteProductIds + productId
-
-        }
-    }
-
-    fun onSearchQueryChange(newValue: String) {
-        searchQuery = newValue
-    }
-
-    val filteredProducts: List<ProductUi>
-        get() = allProducts.filter { product ->
+    private fun filterProducts(searchQuery: String, showOnlyInStock: Boolean): List<ProductUi> {
+        return allProducts.filter { product ->
             val matchesSearch =
                 product.title.contains(searchQuery, ignoreCase = true) ||
                         product.brand.contains(searchQuery, ignoreCase = true) ||
@@ -815,5 +761,45 @@ class ProductCatalogViewModel : ViewModel() {
                 !showOnlyInStock || product.stock > 0
             matchesSearch && matchesStock
         }
+    }
+    fun onToggleStockFilter() {
+        _uiState.update { currentState ->
+            val newShowOnlyInStock = !currentState.showOnlyInStock
+            currentState.copy(
+                showOnlyInStock = newShowOnlyInStock,
+                products = filterProducts(
+                    searchQuery = currentState.searchQuery,
+                    showOnlyInStock = newShowOnlyInStock
+                )
+            )
+        }
+    }
+    fun onFavoriteClick(productId: Int) {
+        _uiState.update { currentState ->
+            val newFavoriteIds =
+                if (currentState.favoriteProductIds.contains(productId)) {
+                    currentState.favoriteProductIds - productId
+                } else {
+                    currentState.favoriteProductIds + productId
+                }
+            currentState.copy(
+                favoriteProductIds = newFavoriteIds
+            )
+        }
+    }
+
+    fun onSearchQueryChange(newValue: String) {
+        _uiState.update { currentState ->
+            currentState.copy(
+                searchQuery = newValue,
+                products = filterProducts(
+                    searchQuery = newValue,
+                    showOnlyInStock = currentState.showOnlyInStock
+                )
+            )
+        }
+    }
+
 }
+
 
