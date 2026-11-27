@@ -43,6 +43,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 
 class MainActivity : ComponentActivity() {
@@ -53,8 +54,6 @@ class MainActivity : ComponentActivity() {
             ProductExplorerTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     ProductCatalogContainer(
-                        products = sampleProducts(),
-                        categories = sampleCategories(),
                         onProductClick = {
                             // Plus tard : ouvrir le détail du produit
                         },
@@ -445,12 +444,21 @@ fun ProductQuickInfoRow(
 @Preview(showBackground = true)
 @Composable
 fun ProductCatalogContainerPreview() {
-    ProductExplorerTheme {
-        ProductCatalogContainer(
-            products = sampleProducts(),
-            categories = sampleCategories(),
-            onProductClick = {}
-        )
+    @Composable
+    fun ProductCatalogScreenDarkPreview() {
+        ProductExplorerTheme(darkTheme = true) {
+            ProductCatalogScreen(
+                products = sampleProducts(),
+                categories = sampleCategories(),
+                searchQuery = "audio",
+                onSearchQueryChange = {},
+                showOnlyInStock = true,
+                onToggleStockFilter = {},
+                favoriteProductIds = listOf(2),
+                onFavoriteClick = {},
+                onProductClick = {}
+            )
+        }
     }
 }
 
@@ -459,11 +467,17 @@ fun ProductCatalogContainerPreview() {
     name = "Catalogue - Dark Theme"
 )
 @Composable
-fun ProductCatalogContainerDarkPreview() {
+fun ProductCatalogScreenDarkPreview() {
     ProductExplorerTheme(darkTheme = true) {
-        ProductCatalogContainer(
+        ProductCatalogScreen(
             products = sampleProducts(),
             categories = sampleCategories(),
+            searchQuery = "audio",
+            onSearchQueryChange = {},
+            showOnlyInStock = true,
+            onToggleStockFilter = {},
+            favoriteProductIds = listOf(2),
+            onFavoriteClick = {},
             onProductClick = {}
         )
     }
@@ -474,11 +488,17 @@ fun ProductCatalogContainerDarkPreview() {
     name = "Catalogue - Light Theme"
 )
 @Composable
-fun ProductCatalogContainerLightPreview() {
+fun ProductCatalogScreenLightPreview() {
     ProductExplorerTheme(darkTheme = false) {
-        ProductCatalogContainer(
+        ProductCatalogScreen(
             products = sampleProducts(),
             categories = sampleCategories(),
+            searchQuery = "",
+            onSearchQueryChange = {},
+            showOnlyInStock = false,
+            onToggleStockFilter = {},
+            favoriteProductIds = listOf(1),
+            onFavoriteClick = {},
             onProductClick = {}
         )
     }
@@ -661,57 +681,22 @@ fun ProductCatalogScreen(
 
 @Composable
 fun ProductCatalogContainer(
-    products: List<ProductUi>,
-    categories: List<String>,
     onProductClick: (ProductUi) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: ProductCatalogViewModel = viewModel()
 ) {
-    var searchQuery by rememberSaveable {
-        mutableStateOf("")
-    }
-    var showOnlyInStock by rememberSaveable {
-        mutableStateOf(false)
-    }
-    var favoriteProductIds by rememberSaveable {
-        mutableStateOf(listOf<Int>())
-    }
-    val filteredProducts = remember(products, searchQuery, showOnlyInStock) {
-        products.filter { product ->
-            val matchesSearch =
-                product.title.contains(searchQuery, ignoreCase = true) ||
-                        product.brand.contains(searchQuery, ignoreCase = true) ||
-                        product.category.contains(searchQuery, ignoreCase = true)
-            val matchesStock =
-                !showOnlyInStock || product.stock > 0
-            matchesSearch && matchesStock
-        }
-    }
-    fun toggleFavorite(productId: Int) {
-        favoriteProductIds = if (favoriteProductIds.contains(productId)) {
-            favoriteProductIds - productId
-        } else {
-            favoriteProductIds + productId
-        }
-    }
     ProductCatalogScreen(
-        products = filteredProducts,
-        categories = categories,
-        searchQuery = searchQuery,
-        onSearchQueryChange = { newValue ->
-            searchQuery = newValue
-        },
-        showOnlyInStock = showOnlyInStock,
-        onToggleStockFilter = {
-            showOnlyInStock = !showOnlyInStock
-        },
-        favoriteProductIds = favoriteProductIds,
-        onFavoriteClick = { productId ->
-            toggleFavorite(productId)
-        },
+        products = viewModel.filteredProducts,
+        categories = viewModel.categories,
+        searchQuery = viewModel.searchQuery,
+        onSearchQueryChange = viewModel::onSearchQueryChange,
+        showOnlyInStock = viewModel.showOnlyInStock,
+        onToggleStockFilter = viewModel::onToggleStockFilter,
+        favoriteProductIds = viewModel.favoriteProductIds,
+        onFavoriteClick = viewModel::onFavoriteClick,
         onProductClick = onProductClick,
         modifier = modifier
     )
-
 }
 @Composable
 fun ProductListItem(
@@ -797,10 +782,6 @@ class ProductCatalogViewModel : ViewModel() {
     var searchQuery by mutableStateOf("")
         private set
 
-    fun onSearchQueryChange(newValue: String) {
-        searchQuery = newValue
-    }
-
     var showOnlyInStock by mutableStateOf(false)
         private set
 
@@ -819,6 +800,11 @@ class ProductCatalogViewModel : ViewModel() {
 
         }
     }
+
+    fun onSearchQueryChange(newValue: String) {
+        searchQuery = newValue
+    }
+
     val filteredProducts: List<ProductUi>
         get() = allProducts.filter { product ->
             val matchesSearch =
@@ -829,6 +815,5 @@ class ProductCatalogViewModel : ViewModel() {
                 !showOnlyInStock || product.stock > 0
             matchesSearch && matchesStock
         }
-
 }
 
